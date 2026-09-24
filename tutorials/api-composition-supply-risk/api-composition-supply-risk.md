@@ -8,35 +8,7 @@ time: 45
 tags: [ tutorial>intermediate, software-product>sap-integration-suite, software-product>sap-business-technology-platform ]
 primary_tag: software-product>sap-integration-suite
 ---
----
 
-## Scenario
-
-**Company:** BestRun
-
-**Challenge:** The company BestRun wants to optimize their procurement process by establishing a Risk Assessment Process using an AI Agent.
-
-**Data Sources:**
-| Source | Content |
-|---|---|
-| Business Partner API | Supplier details |
-| Risk Analytics API | Third party API (e.g. Everstream system) that exposes risk associated with a location |
-| Plant API | Plant details |
-| Material API | Material, Storage location, stock levels, and batch details |
-
-
-> [!NOTE]
-> All these APIs are mock APIs publicly hosted for trial. They can be used to create a composed API via Business Data Graph, as detailed in this exercise.
-
-**Goal:** Select most reliable supplier for each material taking into consideration the risk associated with a location of the plant, stock levels of the material at a plant and physical distance of the plant from delivery location.
-
----
-
-
-![MCP Scenario Diagram](./assets/MCP_Scenario_Diagram.jpg)
-
-
----
 # Build a Supply Risk API with API Composition
 
 <!-- description --> Use API Composition in SAP Integration Suite to compose supplier, plant, stock, and risk data from four APIs into a single unified Business Data Graph.
@@ -69,7 +41,27 @@ Refer to the [API Composition Initial Setup](https://help.sap.com/docs/api-compo
 - How to activate the Business Data Graph and retrieve the OData URL and OpenAPI Specification
 - How to explore and test composed API using the API Composition Navigator
 
----
+## Scenario
+
+**Company:** BestRun
+
+**Challenge:** The company BestRun wants to optimize their procurement process by establishing a Risk Assessment Process using an AI Agent.
+
+**Data Sources:**
+| Source | Content |
+|---|---|
+| Business Partner API | Supplier details |
+| Risk Analytics API | Third party API (e.g. Everstream system) that exposes risk associated with a location |
+| Plant API | Plant details |
+| Material API | Material, Storage location, stock levels, and batch details |
+
+
+> [!NOTE]
+> All these APIs are mock APIs publicly hosted for trial. They can be used to create a composed API via Business Data Graph, as detailed in this exercise.
+
+**Goal:** Select most reliable supplier for each material taking into consideration the risk associated with a location of the plant, stock levels of the material at a plant and physical distance of the plant from delivery location.
+
+![MCP Scenario Diagram](./assets/MCP_Scenario_Diagram.jpg)
 
 ### Step 1 — Set Up the Four Destinations
 
