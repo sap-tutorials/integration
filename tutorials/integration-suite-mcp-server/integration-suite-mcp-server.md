@@ -16,7 +16,7 @@ The tools exposed by MCP server helps select the most reliable supplier for each
 
 ## Prerequisites
 
-- You have completed [Build a Supply Risk API with API Composition](../api-composition-supply-risk/api-composition-supply-risk) and have the **OData URL** and downloaded **OpenAPI Specification** from Step 8 of that tutorial
+- You have completed [Build a Supply Risk API with API Composition](./api-composition-supply-risk) and have the **OData URL** and downloaded **OpenAPI Specification** from Step 8 of that tutorial
 - **SAP Integration Suite** with **API Management** capability activated
 - An **Integration Cell** runtime is activated and available — refer to [API-Centric Integration on SAP Integration Suite — Part 1](https://community.sap.com/t5/technology-blog-posts-by-sap/api-centric-integration-on-sap-integration-suite-part-1-build-and-deploy/ba-p/14438357) (section: **Activate the Integration Cell Runtime**) if needed
 - The MCP Server artifact is available only on the **Enhanced**, **Premium**, **Trial**, and **Free Tier** service plans for SAP Integration Suite
