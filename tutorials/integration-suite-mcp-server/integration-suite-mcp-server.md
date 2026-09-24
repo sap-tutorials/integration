@@ -20,7 +20,6 @@ The tools exposed by MCP server helps select the most reliable supplier for each
 - **SAP Integration Suite** with **API Management** capability activated
 - An **Integration Cell** runtime is activated and available — refer to [API-Centric Integration on SAP Integration Suite — Part 1](https://community.sap.com/t5/technology-blog-posts-by-sap/api-centric-integration-on-sap-integration-suite-part-1-build-and-deploy/ba-p/14438357) (section: **Activate the Integration Cell Runtime**) if needed
 - The MCP Server artifact is available only on the **Enhanced**, **Premium**, **Trial**, and **Free Tier** service plans for SAP Integration Suite
-- The `PI_Integration_Developer` role collection is assigned to your user
 - [Assign roles to your user for Cloud Integration and API Management Capabilities](https://help.sap.com/docs/integration-suite/sap-integration-suite/configuring-user-access?locale=en-US&state=PRODUCTION&version=CLOUD#loio2c6214a3228e4b4cba207f49fda92ed4__section_xbf_glz_l2c)
 - [Check BTP regions where the Integration Cell runtime is available](https://me.sap.com/notes/3769634)
 
