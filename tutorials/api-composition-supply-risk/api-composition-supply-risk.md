@@ -433,4 +433,4 @@ The response returns a `200 OK` with a live plant record showing the composed st
 
 
 
-You have successfully built a unified supply risk API. The OData URL and OpenAPI Specification from this tutorial are the inputs for [Create an MCP Server for Enterprise AI Agents](../integration-suite-mcp-server/integration-suite-mcp-server.md).
+You have successfully built a unified supply risk API. The OData URL and OpenAPI Specification from this tutorial are the inputs for [Create an MCP Server for Enterprise AI Agents](./integration-suite-mcp-server).
