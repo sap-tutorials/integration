@@ -177,7 +177,7 @@ In our iFlow, we will set the Orchestration configuration details as exchange pr
 
 Now that we understand the integration scenario and what our prompt template produces, it is time to create the integration flow (iFlow) that will process incoming customer support requests.
 
-👉 Navigate to SAP Integration Suite - URL shared in Step 1. Now, create a new Integration Package, name it *CustomerRequest Integration Scenario User{{var:userNumber}}* (replace the number with the number corresponding to your user) and select the **Save** button.
+👉 Navigate to SAP Integration Suite - URL shared in Step 1. Now, create a new Integration Package, name it ***CustomerRequest Integration Scenario User{{var:userNumber}}*** (replace the number with the number corresponding to your user) and select the **Save** button.
 
 | Field | Value |
 | ---------- | ------- |
@@ -189,11 +189,15 @@ Now that we understand the integration scenario and what our prompt template pro
 
 > Unfortunately, we might not have enough time to create an integration flow from scratch. Therefore, we've prepared an integration flow for you to copy and configure to speed up the creation process.
 
-👉 Now, navigate to the **CustomerRequest Integration Scenario User00** integration package, select the actions button **...** of the **AEM_WebsiteCustomerRequest_AICore_Processor_User00** integration flow and then the **Copy** button to copy the integration flow.
+👉 Now, navigate to the **CustomerRequest Integration Scenario User00** integration package by navigating to Design > Integrations and APIs and selecting the **CustomerRequest Integration Scenario User00** integration package.
+
+![Navigate to CustomerRequest Integration Scenario User00](assets/navigate-customer-request-user00.png)
+
+👉 In the **Artifacts** tab, select the actions button **...** of the **AEM_WebsiteCustomerRequest_AICore_Processor_User00** integration flow and then the **Copy** button to copy the integration flow.
 
 ![Copy action button](assets/copy-action.png)
 
-👉 In the pop-up, set your username as the name of the Integration Flow and select the Integration package you created previously.
+👉 In the pop-up, set your username as the name of the Integration Flow and select the Integration package you created previously, e.g. **CustomerRequest Integration Scenario User{{var:userNumber}}**.
 
 ![Select package](assets/copy-select-package.png)
 
@@ -208,7 +212,7 @@ Our copied integration flow is ready for us. Let's get familiar with it.
 | Field | Value |
 |-------|-------|
 | **Sender Tab** | -- |
-| Value | Replace the placeholder `User{{var:userNumber}}` with your actual user number, e.g. User85 |
+| Value | Replace the placeholder `UserXX` with your actual user number, e.g. User{{var:userNumber}} |
 | **Receiver Tab** | --- |
 | AICoreDeployymentID | Users User01-User99, set `dbd716fe17616cc3` as the value. Users User100-User180, set `d6bc04de07fb1d32` as the value. |
 | **More Tab** | --- |
@@ -242,6 +246,8 @@ In the **Processing** tab, the following properties are set. We are just convert
 |----------|-------|
 | Use namespace mapping | ✅ |
 | Add XML root element | ✅ |
+
+> In the UI, there will be a warning indicating that the *Solace PubSub+ Component Sender may not pass JSON message to JSON To XML Converter. JSON To XML Converter supports JSON input only*. You can safely ignore the warning, nothing to worry about :-).
 
 #### Customer Request and LLM properties - Content Modifier
 
