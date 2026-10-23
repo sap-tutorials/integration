@@ -115,8 +115,8 @@ Message processData(Message message) {
     // it only sets two exchange properties, runHeadline and runSummary,
     // which show up in Monitor -> the message's trace -> Properties for any
     // step after this one. Edit the two path constants if your buckets differ.
-    // The sender keeps the source file in place (Post-Processing: Keep File
-    // and Process Again), so every poll reprocesses the same file.
+    // Read Sales File keeps the source file in place (Post-Processing: Keep
+    // File), so it stays in daily/ for the next run.
     def sourcePath  = "regional-landing-bkt/daily/ (kept for the next run)"
     def curatedPath = "curated-corp/profit-margins/sales_" + message.getProperty("businessDate") + ".json"
 
