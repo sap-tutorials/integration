@@ -7,6 +7,13 @@ auto_validation: true
 time: 60
 tags: [ tutorial>intermediate, software-product>sap-integration-suite, software-product>sap-business-technology-platform ]
 primary_tag: software-product>sap-integration-suite
+variables:
+  - name: userNumber
+    label: Your user number
+    type: string
+    maxLength: 3
+    required: true
+    placeholder: XX
 ---
 
 # SAP TechEd Developer Garage: Error Resolution with AI Adapter
