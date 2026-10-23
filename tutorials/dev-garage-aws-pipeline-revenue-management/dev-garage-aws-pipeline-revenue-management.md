@@ -11,24 +11,31 @@ primary_tag: software-product>sap-integration-suite
 
 # SAP TechEd Developer Garage: AWS Pipeline for Revenue Management
 
-<!-- description --> Build an integration flow in SAP Integration Suite that polls a sales file from Amazon S3, looks up unit costs in a reference file in S3, calculates profit margin, and writes the enriched data to a second S3 bucket in another region.
-
-## Prerequisites
-
-- An SAP BTP account or trial account with **SAP Integration Suite** and the **Cloud Integration** capability activated
-- [Assign roles to your user for Cloud Integration](https://help.sap.com/docs/integration-suite/sap-integration-suite/configuring-user-access?locale=en-US&state=PRODUCTION&version=CLOUD#loio2c6214a3228e4b4cba207f49fda92ed4__section_xbf_glz_l2c), including the `Integration_Developer` role collection
-- The file `From the Instructor.txt`, which your instructor shares with you through a secure medium. It is not part of this repository. It contains the **AWS Access Key ID** and **Secret Access Key** for the S3 buckets, plus the bucket, region, and folder names
-- Familiarity with the SAP Integration Suite interface helps. No Groovy experience is required; the script is provided.
-
-You don't need an AWS account. Your instructor prepares the S3 buckets, the reference file, and the access keys, and places one sales file in the shared `daily/` folder. The file stays there, so your flow reprocesses it on every poll.
+<!-- description --> Build an integration flow in SAP Integration Suite that reads a sales file from Amazon S3, looks up unit costs in a reference file in S3, calculates profit margin, and writes the enriched data to a second S3 bucket in another region.
 
 ## You will learn
 
 - How to build an integration flow from scratch in SAP Integration Suite
-- How to store AWS credentials as Security Material
-- How the AmazonWebServices adapter polls, reads, and writes files in Amazon S3
+- How the AWS adapters use credentials that have been provisioned for you
+- How the AmazonWebServices adapter reads and writes files in Amazon S3
 - How to enrich messages with a reference-data lookup and calculate profit margin in Groovy
 - How to deploy an integration flow and follow a message step by step in the Monitor
+
+## Prerequisites
+
+- Contact a Developer Advocate in the Developer Garage to share the necessary credentials for accessing the provisioned systems.
+- Various systems have been provisioned for you to complete this tutorial.
+
+### System access
+
+As part of this tutorial, you will need to access the provisioned systems using the credentials shared with you. In the table below, you will find the necessary information to access each system.
+
+> There are two SAP Integration Suite environments available for use in this tutorial. Use the one corresponding to your user range.
+
+| System | URL |
+| --- | --- |
+| SAP Integration Suite - Dev Garage 1 (User01 - User99) | <https://url.sap/054nme> |
+| SAP Integration Suite - Dev Garage 2 (User100 - User180) | <https://url.sap/i18ebv> |
 
 ## Scenario
 
@@ -40,18 +47,19 @@ You don't need an AWS account. Your instructor prepares the S3 buckets, the refe
 
 | Source | Location | Content |
 | :--- | :--- | :--- |
-| Sales file | `regional-landing-bkt/daily/` (region `eu-north-1`) | One row per sale: store, region, product, quantity, price |
+| Sales file | `regional-landing-bkt/daily/sales_2026-10-14.csv` (region `eu-north-1`) | One row per sale: store, region, product, quantity, price |
 | Reference file | `regional-landing-bkt/reference/product_master.csv` (region `eu-north-1`) | Unit cost of each of the 15 products |
 | Curated output | `curated-corp/profit-margins/` (region `us-west-1`) | The enriched sales data, written by your flow |
 
 **Goal:** Calculate profit margin, a number that exists nowhere in the source file, for every sale, write the enriched data to the curated bucket, and summarize the run.
 
-The AmazonWebServices adapter is the hero of this flow. You use it three ways: polling for new files, reading one file on demand, and writing the result.
+The AmazonWebServices adapter is the hero of this flow. You use it three times: to read the sales file, to read the reference file, and to write the result.
 
 The flow you'll build:
 
 ```text
-S3 sender (poll daily/, keep the file and process it again)
+Start Timer                 (runs the flow once each time you deploy)
+  -> Read Sales File          (Request Reply -> S3 read: daily/sales_2026-10-14.csv)
   -> CSV to XML Converter     (CSV -> structured XML, using xml_schema.xsd)
   -> XML to JSON Converter    (XML -> JSON)
   -> Prepare for Lookup       (Content Modifier: ingestion metadata, stash the sales JSON)
@@ -64,7 +72,8 @@ S3 sender (poll daily/, keep the file and process it again)
 
 | Part of the flow | What it does |
 | :--- | :--- |
-| **S3 sender** | Polls the `daily/` folder for the sales CSV and leaves the file in place, so it is processed again on every poll |
+| **Start Timer** | Starts the flow once, each time you deploy. No sender system is needed. |
+| **Read Sales File** | Reads `sales_2026-10-14.csv` from the `daily/` folder and leaves the file in place |
 | **CSV to XML Converter** | Gives each row named fields, using the `xml_schema.xsd` schema |
 | **XML to JSON Converter** | Turns the XML into JSON, the shape the rest of the flow works with |
 | **Prepare for Lookup** | Records when and where the file was ingested, and sets the sales data aside so it survives the next step |
@@ -75,17 +84,21 @@ S3 sender (poll daily/, keep the file and process it again)
 
 ---
 
-### Create a Package and an Integration Flow
+### Step 1 — Create a Package and an Integration Flow
 
-In SAP Integration Suite, go to **Design → Integrations and APIs** and click **Create**.
+#### Create an Integration Package
+
+Now that we understand the integration scenario, it is time to create the integration flow (iFlow).
+
+👉 Navigate to SAP Integration Suite - URL specified under System Access. Now, create a new Integration Package, name it ***AWS Pipeline for Revenue Management Integration Scenario User{{var:userNumber}}*** (replace the number with the number corresponding to your user) and select the **Save** button.
 
 | Field | Value |
-| :--- | :--- |
-| Name | `AWS Pipeline for Revenue Management` |
-| Technical Name | *(auto-populated)* |
-| Short Description | `Ingest and enrich sales data in Amazon S3` |
+| ---------- | ------- |
+| Name | AWS Pipeline for Revenue Management Integration Scenario User{{var:userNumber}} |
+| Technical Name | AWSPipelineforRevenueManagementIntegrationScenarioUser{{var:userNumber}} |
+| Short Description | This integration package contains artifacts part of the Developer Garage where we explore how to ingest and enrich sales data in Amazon S3 using the AmazonWebServices adapter. |
 
-Click **Save**.
+#### Create the Integration Flow
 
 On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **Create** selected and fill in:
 
@@ -94,7 +107,7 @@ On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **C
 | Name | `AWS Pipeline for Revenue Management` |
 | ID | *(auto-populated)* |
 
-Click **OK**, open the integration flow, and click **Edit**. The canvas starts with a **Sender**, a **Start** event, an **End** event, and a **Receiver**.
+Click **OK**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
 
 > **Tip:** You add steps from the palette at the top of the canvas. Converters, Content Modifier, and Groovy Script are under **Message Transformers**; Request Reply is under **Call → External Call**; extra receivers are under **Participants**. Menu names can differ slightly between tenant versions.
 
@@ -102,26 +115,29 @@ Click **Save** regularly as you build.
 
 ---
 
-### Create Security Material
+### Step 2 — Check the Credentials Provisioned for You
 
-Your instructor shares `From the Instructor.txt` with you through a secure medium. It holds the `access key id` and `secret access key`. Store them once; every AWS connection in your flow refers to them by name.
+The AWS adapters authenticate to Amazon S3 with two secure parameters. They have been created in your tenant, so you don't create them and you never see the AWS access key or secret.
 
-Go to **Monitor → Integrations and APIs → Security Material**. Create two secure parameters, one after the other, with **Create → Secure Parameter**:
+Check that they exist. Go to **Monitor → Integrations and APIs → Security Material**. In the list, find two entries named `S3Key` and `S3Secret` with type **Secure Parameter**.
 
-| Name | Secure Parameter |
-| :--- | :--- |
-| `S3Key` | AWS Access Key ID |
-| `S3Secret` | AWS Secret Access Key |
+You enter these names in the **Access Key Alias** and **Secret Key Alias** fields of the AWS adapters in Steps 3, 6, and 8. If either is missing, ask a Developer Advocate. Don't create them yourself.
 
-For each one, enter the value in **Secure Parameter** and again in **Repeat Secure Parameter**, then click **Deploy**.
-
-> **Caution:** Use the exact names `S3Key` and `S3Secret`, including capitals. The AWS adapters look the secure parameters up by these names (as aliases); a mismatch makes the deployment fail. Never paste the keys into chat, slides, screenshots, or a shared file.
+> **Caution:** The names are case-sensitive: `S3Key` and `S3Secret`. The AWS adapters look the credentials up by these names; a mismatch makes the deployment fail. Never ask for, paste, or share the AWS keys in chat, slides, screenshots, or a shared file.
 
 ---
 
-### Connect the S3 Sender
+### Step 3 — Start the Flow and Read the Sales File
 
-Drag a connection from the **Sender** to the **Start** event. Choose adapter **AmazonWebServices** and message protocol **S3**.
+#### Start Timer
+
+Replace the **Start** event with a **Timer Start** event. On its **Scheduler** tab, keep **Basic** selected and set **Enter As** to `Simple Schedule`, **Repeat** to `None`, and **Schedule** to `On Deployment`, so the flow runs once each time you deploy.
+
+![Timer Start — Scheduler tab](./assets/aws-s3-step3-timer-start.png)
+
+#### Read Sales File
+
+Add a **Request Reply** after the timer and name it `Read Sales File`. Add a **Receiver** from the palette, connect **Read Sales File** to it, and choose adapter **AmazonWebServices** and message protocol **S3**.
 
 Fill in the adapter settings:
 
@@ -130,35 +146,32 @@ Fill in the adapter settings:
 | Connection | Host | `amazonaws.com` |
 | Connection | Region Name | `eu-north-1 Europe (Stockholm)` (choose from the dropdown) |
 | Connection | Bucket Name | `regional-landing-bkt` |
-| Connection | Polling Interval (in ms) | `300000` (every 5 minutes; each poll is a run) |
 | Connection | Authentication Type | `Access and Secret Key` |
 | Connection | Access Key Alias | `S3Key` |
 | Connection | Secret Key Alias | `S3Secret` |
 | Connection | Requester Pays | Unchecked |
 | Connection | Enable Legacy Connectivity | Unchecked |
+| Processing | Operation | `Read Operation` |
 | Processing | Directory | `daily` |
-| Processing | File Name | `sales*.csv` |
-| Processing | Sorting | `None` |
-| Processing | Include Sub-Directories | Unchecked |
-| Processing | Execute Post-Processing When Message Successfully Processed | Unchecked |
-| Processing | Post-Processing | `Keep File and Process Again` |
-| Processing | Optional S3 Metadata | Leave empty |
-| Processing | S3 Pre-Signed URL | Unchecked |
-| Duplicate Handling | Duplicate Check | Unchecked |
+| Processing | File Name | `sales_2026-10-14.csv` |
+| Processing | Post-Processing | `Keep File` |
+| Processing | Customer Decryption Key Alias | Leave empty |
 
-![S3 sender — Connection tab](./assets/aws-s3-step3-sender-connection.png)
+![Read Sales File — Connection tab](./assets/aws-s3-step3-read-sales-connection.png)
 
-![S3 sender — Processing tab](./assets/aws-s3-step3-sender-processing.png)
+![Read Sales File — Processing tab](./assets/aws-s3-step3-read-sales-processing.png)
 
 > **Caution:** Choose the region from the **Region Name** dropdown. A region label typed or pasted into a field makes the adapter fail with an `UnknownHostException`.
 
-The file is never moved or deleted, so every poll processes the same sales file again. You may see the design-time warning "AWS_SND_HTTP_S3_PULL may not pass Text message to CSV To XML Converter". It's an advisory and doesn't stop the flow.
+The file is never moved or deleted, so it stays in `daily/` and your flow can read it again each time you deploy.
 
-### Convert the CSV to JSON
+---
+
+### Step 4 — Convert the CSV to JSON
 
 #### CSV to XML Converter
 
-Add a **CSV to XML Converter** right after the **Start** event. On its **Processing** tab, click **Select** next to **XML Schema** and upload `xml_schema.xsd`. If you don't have the file, save the XML below as `xml_schema.xsd` and upload that.
+Add a **CSV to XML Converter** right after **Read Sales File**. On its **Processing** tab, click **Select** next to **XML Schema** and upload `xml_schema.xsd`. If you don't have the file, save the XML below as `xml_schema.xsd` and upload that.
 
 | Field | Value |
 | :--- | :--- |
@@ -167,6 +180,7 @@ Add a **CSV to XML Converter** right after the **Start** event. On its **Process
 | Record Marker in CSV | *(leave blank)* |
 | Field Separator in CSV | `Comma` |
 | Exclude First Line Header | ✓ |
+| Configure CSV Headers to match | `XSD Elements` |
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -199,7 +213,7 @@ Add a **CSV to XML Converter** right after the **Start** event. On its **Process
 
 ![CSV to XML Converter — Processing tab](./assets/aws-s3-step4-csv-to-xml.png)
 
-> The converter matches the CSV's header row against the XSD element names exactly, so the sales file's header must be lowercase: `transaction_id,store_id,region,product_id,product_name,category,quantity,unit_price,total_amount,sale_timestamp,payment_method`. The files your instructor's feeder generates already are.
+> The converter matches the CSV's header row against the XSD element names exactly, so the sales file's header must be lowercase: `transaction_id,store_id,region,product_id,product_name,category,quantity,unit_price,total_amount,sale_timestamp,payment_method`. The provided sales file already is.
 
 #### XML to JSON Converter
 
@@ -215,7 +229,9 @@ Add an **XML to JSON Converter** after it:
 
 This converter writes every value as a JSON string. The Groovy script in Step 7 turns the numbers back into real numbers.
 
-### Prepare for the Lookup
+---
+
+### Step 5 — Prepare for the Lookup
 
 Add a **Content Modifier** after the XML to JSON Converter and name it `Prepare for Lookup`. On its **Exchange Property** tab, add four rows:
 
@@ -234,9 +250,11 @@ Add a **Content Modifier** after the XML to JSON Converter and name it `Prepare 
 
 > **Caution:** Set the Data Type of `preEnrichmentJson` to `java.lang.String`. Without it, the property only points at the body's data stream, the lookup in the next step reads that stream to the end, and the script later finds the property empty ("Text must not be null or empty").
 
-### Look Up Unit Costs from S3
+---
 
-Unit costs live in a reference file your instructor placed in S3: `regional-landing-bkt/reference/product_master.csv`. You read it mid-flow with the same AWS adapter, this time as a receiver.
+### Step 6 — Look Up Unit Costs from S3
+
+Unit costs live in a reference file that has been placed in S3: `regional-landing-bkt/reference/product_master.csv`. You read it mid-flow with the same AWS adapter, the same way as the sales file.
 
 Add a **Request Reply** after Prepare for Lookup and name it `Cost LookUp`. Add a **Receiver** from the palette (its default name is `Receiver1`). Connect **Cost LookUp** to it and choose **AmazonWebServices**, protocol **S3**.
 
@@ -248,12 +266,12 @@ Add a **Request Reply** after Prepare for Lookup and name it `Cost LookUp`. Add 
 | Authentication Type | `Access and Secret Key` |
 | Access Key Alias | `S3Key` |
 | Secret Key Alias | `S3Secret` |
-| Operation | `Read` |
+| Operation | `Read Operation` |
 | Directory | `reference` |
 | File Name | `product_master.csv` |
 | Post-Processing | `Keep File` |
 
-![Cost LookUp — S3 receiver, Read operation](./assets/aws-s3-step6-cost-lookup.png)
+![Cost LookUp — Processing tab](./assets/aws-s3-step6-cost-lookup.png)
 
 > **Caution:** Post-Processing defaults to **Delete File**. Change it to **Keep File**. With the default, the read fails, because you're only allowed to read the reference folder.
 
@@ -267,9 +285,11 @@ P-1003,5.99
 ...
 ```
 
-The sender waits for files to arrive; this receiver fetches one specific file when the flow asks for it. Same adapter, two different jobs.
+Read Sales File and Cost LookUp use the same adapter and the same operation. Only the file differs.
 
-### Calculate Profit Margin
+---
+
+### Step 7 — Calculate Profit Margin
 
 Add a **Groovy Script** step after Cost LookUp and name it `Margin Calculation`. Click the step's create-script icon, replace the template in the editor with the script below, and click **OK**.
 
@@ -400,8 +420,8 @@ Message processData(Message message) {
     // it only sets two exchange properties, runHeadline and runSummary,
     // which show up in Monitor -> the message's trace -> Properties for any
     // step after this one. Edit the two path constants if your buckets differ.
-    // The sender keeps the source file in place (Post-Processing: Keep File
-    // and Process Again), so every poll reprocesses the same file.
+    // Read Sales File keeps the source file in place (Post-Processing: Keep
+    // File), so it stays in daily/ for the next run.
     def sourcePath  = "regional-landing-bkt/daily/ (kept for the next run)"
     def curatedPath = "curated-corp/profit-margins/sales_" + message.getProperty("businessDate") + ".json"
 
@@ -452,11 +472,13 @@ Message processData(Message message) {
 
 > The **Read from** and **Published to** lines in the summary use fixed paths. If your folders differ from the defaults, edit the `sourcePath` and `curatedPath` lines in the script. The flow itself doesn't depend on them.
 
-### Write the Curated File and Show the Summary
+---
+
+### Step 8 — Write the Curated File and Show the Summary
 
 #### S3 Write
 
-Add a **Request Reply** after Margin Calculation and name it `S3 Write`. Connect it to the **Receiver** that came with the canvas and choose **AmazonWebServices**, protocol **S3**.
+Add a **Request Reply** after Margin Calculation and name it `S3 Write`. Add a third **Receiver** from the palette, connect **S3 Write** to it, and choose **AmazonWebServices**, protocol **S3**.
 
 | Field | Value |
 | :--- | :--- |
@@ -466,13 +488,15 @@ Add a **Request Reply** after Margin Calculation and name it `S3 Write`. Connect
 | Authentication Type | `Access and Secret Key` |
 | Access Key Alias | `S3Key` |
 | Secret Key Alias | `S3Secret` |
-| Operation | `Write` |
+| Operation | `Write Operation` |
 | Directory | `profit-margins` |
 | File Name | `sales_${property.businessDate}.json` |
 | Content Type | `application/json` |
 | Existing File Handling | `Overwrite` |
 
-![S3 Write — S3 receiver, Write operation](./assets/aws-s3-step8-write-curated.png)
+![S3 Write — Connection tab](./assets/aws-s3-step8-write-connection.png)
+
+![S3 Write — Processing tab](./assets/aws-s3-step8-write-curated.png)
 
 #### Show Run Summary
 
@@ -492,17 +516,17 @@ Your finished flow:
 
 ---
 
-### Deploy and Test
+### Step 9 — Deploy and Test
 
 Click **Save**, then **Deploy**. Go to **Monitor → Integrations and APIs → Manage Integration Content** and wait until your integration flow shows **Started**.
 
 In the same view, select your integration flow and set its **Log Level** to **Trace**. Trace switches itself off after a short while, so do this right before testing.
 
-Your flow processes the sales file in `daily/` on every poll, so a run starts within a few minutes of deploying. Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
+Your flow runs once each time you deploy it. Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
 
 | Check | Where | What you should see |
 | :--- | :--- | :--- |
-| Picked up | Monitor Message Processing | Your message appears. The file stays in `daily/` and is picked up again on the next poll |
+| Picked up | Monitor Message Processing | Your message appears. The file stays in `daily/` |
 | Enriched | **S3 Write** → Payload | Every sale has `unit_cost`, `gross_margin`, and `margin_percentage` |
 | Summarized | **End 1** → Exchange Properties | `runSummary` holds the run summary |
 
@@ -510,12 +534,12 @@ Your flow processes the sales file in `daily/` on every poll, so a run starts wi
 
 ![Message Content — run summary at End 1](./assets/aws-s3-step9-run-summary.png)
 
-This example comes from a test run with the 1,000-row sample file `sales_2026-10-07.csv`:
+This example comes from a test run with the 1,000-row sample file `sales_2026-10-14.csv`:
 
 ```text
 Profit margin run complete
 
-Business date:  2026-10-07
+Business date:  2026-10-14
 Records:        1000 (0 without cost data)
 Revenue:        $91,022.76
 Gross margin:   $37,338.94 (41.0%)
@@ -534,25 +558,25 @@ Published to:   curated-corp/profit-margins/sales_<today's date>.json
 | Issue | Fix |
 | :--- | :--- |
 | `UnknownHostException: s3.Europe (Stockholm)...` | The region was entered as a label instead of chosen from the dropdown. Select `eu-north-1 Europe (Stockholm)`. |
-| Deployment fails mentioning a credential | The secure parameter names don't match. They must be exactly `S3Key` and `S3Secret`, deployed, and entered in the Access Key Alias and Secret Key Alias fields of all three AWS adapters. |
+| Deployment fails mentioning a credential | The names in the Access Key Alias and Secret Key Alias fields of all three AWS adapters must be exactly `S3Key` and `S3Secret`. If they are, check Step 2 for both entries; if one is missing, ask a Developer Advocate. |
 | `Header TRANSACTION_ID not present in CSV headers` | The sales file's header doesn't match the XSD. It must be the lowercase header shown in Step 4. |
-| Cost LookUp: access denied | Post-Processing must be **Keep File**, not Delete File. If it is, ask your instructor to check the reference folder permission. |
+| Cost LookUp: access denied | Post-Processing must be **Keep File**, not Delete File. If it is, ask a Developer Advocate to check the reference folder permission. |
 | Cost LookUp: file not found | Directory must be `reference` and File Name `product_master.csv`, exactly, in Region `eu-north-1`. |
 | `Text must not be null or empty` (Margin Calculation) | The stashed sales data is empty. Set the Data Type of `preEnrichmentJson` to `java.lang.String` in Prepare for Lookup. |
 | `JsonException ... current character read is '<'` | The stashed property holds XML. The XML to JSON Converter is missing, or Prepare for Lookup sits before it. |
 | Every record shows `unit_cost` "unknown" | The lookup found no costs. Check in Message Content that the body after Cost LookUp starts with `product_id,unit_cost`. |
 | Curated file is named `sales_.json` | `businessDate` is missing. Add it in Prepare for Lookup (Step 5). |
 | Script check: JSONSlurper without streaming | A best-practice warning, not an error. The script already reads the body as a stream. |
-| No Message Content in the Monitor | Trace wasn't active when the file was processed. Set the log level to Trace and wait for the next poll. |
-| My message never appears | Check your flow is **Started** in Manage Integration Content, and that the sender Directory is `daily`. |
+| No Message Content in the Monitor | Trace wasn't active when the file was processed. Set the log level to Trace and deploy again. |
+| My message never appears | Check your flow is **Started** in Manage Integration Content, and that the Directory in Read Sales File is `daily`. |
 
 #### Try It Yourself
 
 - Before you open the summary, predict which region earned the most margin. Then check.
-- Ask your instructor to raise the unit cost of the Standing Desk in `product_master.csv`. The next run's margin drops, even though the sales data didn't change.
-- Ask your instructor to replace the file in `daily/` with one that contains a sale of product `P-9999`. The summary reports one record without cost data, and that record shows `unknown` for its margin.
+- Ask a Developer Advocate to raise the unit cost of the Standing Desk in `product_master.csv`. The next run's margin drops, even though the sales data didn't change.
+- Ask a Developer Advocate to replace the file in `daily/` with one that contains a sale of product `P-9999`. The summary reports one record without cost data, and that record shows `unknown` for its margin.
 
-You built a flow that polls Amazon S3, enriches the data from a reference file in S3, writes the result back to S3 in another region, and summarizes the run.
+You built a flow that reads from Amazon S3, enriches the data from a reference file in S3, writes the result back to S3 in another region, and summarizes the run.
 
 #### References
 

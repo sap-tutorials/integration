@@ -13,68 +13,76 @@ primary_tag: software-product>sap-integration-suite
 
 <!-- description --> Build an integration flow in SAP Integration Suite that catches an error, masks it, asks an LLM in SAP AI Core for a diagnosis through the AI Adapter, and attaches a readable resolution to the message.
 
-## Prerequisites
-
-- An SAP BTP account with **SAP Integration Suite** and the **Cloud Integration** capability activated, and the **AI Adapter** available on your tenant
-- [Assign roles to your user for Cloud Integration](https://help.sap.com/docs/integration-suite/sap-integration-suite/configuring-user-access?locale=en-US&state=PRODUCTION&version=CLOUD#loio2c6214a3228e4b4cba207f49fda92ed4__section_xbf_glz_l2c), including the `Integration_Developer` role collection
-- The file `From the Instructor.txt`, which your instructor shares with you through a secure medium. It is not part of this repository. It contains the values from an **SAP AI Core** service key and deployment: `address`, `orchestration deployment id`, `ai resource group`, `model`, `token service url`, `clientid`, and `clientsecret`
-- Familiarity with the SAP Integration Suite interface helps. No Groovy experience is required; all scripts are provided.
-
-You don't need your own SAP AI Core instance. Your instructor prepares it. Generative AI Hub and orchestration need the **extended** SAP AI Core service plan.
-
 ## You will learn
 
 - How to connect Cloud Integration to SAP AI Core with the AI Adapter (AICore-GenAIHub variant)
-- How to store SAP AI Core credentials as OAuth2 Security Material
+- How the AI Adapter uses an OAuth2 credential that has been provisioned for you
 - How to catch and handle errors in an exception subprocess without losing the original error
 - How to mask personal data before anything is sent to an LLM
-- How to turn an AI answer into readable attachments and searchable fields in the Monitor
+- How to turn an AI answer into readable attachments, a readable message body, and searchable fields in the Monitor
+
+## Prerequisites
+
+- Contact a Developer Advocate in the Developer Garage to share the necessary credentials for accessing the provisioned systems.
+- Various systems have been provisioned for you to complete this tutorial.
+
+### System access
+
+As part of this tutorial, you will need to access the provisioned systems using the credentials shared with you. In the table below, you will find the necessary information to access each system.
+
+> There are two SAP Integration Suite environments available for use in this tutorial. Use the one corresponding to your user range.
+
+| System | URL |
+| --- | --- |
+| SAP Integration Suite - Dev Garage 1 (User01 - User99) | <https://url.sap/054nme> |
+| SAP Integration Suite - Dev Garage 2 (User100 - User180) | <https://url.sap/i18ebv> |
 
 ## Scenario
 
 **Challenge:** Integration errors are often cryptic, and diagnosing them takes time. Support teams need a plain-language explanation and a suggested fix next to the error.
 
-**Approach:** You build an integration flow that fails on purpose. A sales order contains a text value where the schema expects a number. The flow catches the error, adds context, masks personal data, and sends the result to an LLM in SAP AI Core through the AI Adapter. The answer is attached to the message as a readable resolution.
+**Approach:** You build an integration flow that generates a test error. A sales order contains a text value where the schema expects a number. The flow catches the error, adds context, masks personal data, and sends the result to an LLM in SAP AI Core through the AI Adapter. The answer is attached to the message as a readable resolution.
 
 The AI Adapter is the hero of this flow. It calls the SAP AI Core orchestration service with OAuth2, and you never handle a token yourself.
 
-The flow consists of three connected pieces:
+The flow consists of two connected pieces:
 
 ```text
 Main flow:
   Start Timer -> Set Order Payload -> Set Context -> Validate Order -> End
 
 Exception Subprocess 1 (runs when anything in the main flow fails):
-  Error Start -> Capture Error -> Get AI Diagnosis (Process Call) -> Attach AI Diagnosis -> End Message
-
-Local process "Get AI Diagnosis":
-  Start -> Build Prompt -> Request Reply (AI Adapter -> SAP AI Core) -> End
-  with its own Exception Subprocess 2: Error Start -> SetAIStatus -> End Message
+  Error Start -> Capture Error -> Build Prompt -> Call AI (AI Adapter -> SAP AI Core) -> Attach AI Diagnosis -> End Message
 ```
 
 | Part of the flow | What it does |
 | :--- | :--- |
 | **Start Timer** | Starts the flow once, each time you deploy. No sender system is needed. |
-| **Set Order Payload** | Creates a sample sales order with a deliberate error. |
+| **Set Order Payload** | Creates a sample sales order that contains a test error. |
 | **Set Context** | Records the step and business object, so the error handler knows where it failed. |
 | **Validate Order** | Checks the order against a schema and fails with a precise reason. |
 | **Capture Error** | Collects the error and context, masks personal data, and prepares the AI input. |
-| **Get AI Diagnosis** | Local process that builds the prompt and calls SAP AI Core through the AI Adapter. |
-| **Attach AI Diagnosis** | Turns the AI answer into readable attachments and searchable fields in the Monitor. |
+| **Build Prompt** | Puts the masked error into the instructions for the AI. |
+| **Call AI** | Calls SAP AI Core through the AI Adapter and receives the diagnosis. |
+| **Attach AI Diagnosis** | Turns the AI answer into readable attachments, a readable message body, and searchable fields in the Monitor. |
 
 ---
 
-### Create a Package and an Integration Flow
+### Step 1 — Create a Package and an Integration Flow
 
-In SAP Integration Suite, go to **Design → Integrations and APIs** and click **Create**.
+#### Create an Integration Package
+
+Now that we understand the integration scenario, it is time to create the integration flow (iFlow).
+
+👉 Navigate to SAP Integration Suite - URL specified under System Access. Now, create a new Integration Package, name it ***Error Resolution with AI Adapter Integration Scenario User{{var:userNumber}}*** (replace the number with the number corresponding to your user) and select the **Save** button.
 
 | Field | Value |
-| :--- | :--- |
-| Name | `Error Resolution with AI Adapter` |
-| Technical Name | *(auto-populated)* |
-| Short Description | `Resolve integration errors with AI using the AI Adapter and SAP AI Core` |
+| ---------- | ------- |
+| Name | Error Resolution with AI Adapter Integration Scenario User{{var:userNumber}} |
+| Technical Name | ErrorResolutionwithAIAdapterIntegrationScenarioUser{{var:userNumber}} |
+| Short Description | This integration package contains artifacts part of the Developer Garage where we explore use an LLM to resolve integration errors with AI using the AI Adapter and SAP AI Core. |
 
-Click **Save**.
+#### Create the Integration Flow
 
 On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **Create** selected and fill in:
 
@@ -85,37 +93,31 @@ On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **C
 
 Click **OK**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
 
-> **Tip:** You add steps from the palette at the top of the canvas. Content Modifier and Groovy Script are under **Message Transformers**; Request Reply and Process Call are under **Call**; Exception Subprocess and Local Integration Process are under **Process**. Menu names can differ slightly between tenant versions.
+> **Tip:** You add steps from the palette at the top of the canvas. Content Modifier and Groovy Script are under **Message Transformers**; Request Reply is under **Call**; Exception Subprocess is under **Process**. Menu names can differ slightly between tenant versions.
 
 Click **Save** regularly as you build.
 
-### Create Security Material for SAP AI Core
+---
 
-Your instructor shares `From the Instructor.txt` with you through a secure medium. It holds the `clientid`, `clientsecret`, and `token service url` from the SAP AI Core service key. Store them once; the AI Adapter refers to them by name.
+### Step 2 — Check the Credential Provisioned for You
 
-Go to **Monitor → Integrations and APIs → Security Material** and click **Create → OAuth2 Client Credentials**.
+The AI Adapter authenticates to SAP AI Core with an OAuth2 credential. It has been created in your tenant, so you don't create it and you never see the client ID, client secret, or token URL.
 
-| Field | Value |
-| :--- | :--- |
-| Name | `GenAI_Creds` |
-| Token Service URL | `token service url` from `From the Instructor.txt`. It is the service key's `url` value with `/oauth/token` added, for example `https://<subdomain>.authentication.<region>.hana.ondemand.com/oauth/token` |
-| Client ID | `clientid` from `From the Instructor.txt` |
-| Client Secret | `clientsecret` from `From the Instructor.txt` |
-| Client Authentication | `Send as Request Header` (Basic Authentication). `Send as Body Parameter` normally works as well. |
+Check that it exists. Go to **Monitor → Integrations and APIs → Security Material**. In the list, find the entry named `AICore-resolution` with type **OAuth2 Client Credentials**.
 
-Click **Deploy**.
+You use this name in Step 6. If `AICore-resolution` is missing, ask a Developer Advocate. Don't create it yourself.
 
-> **Caution:** The token URL comes from the SAP AI Core service key. It contains `.authentication.` and ends with `/oauth/token`. It is **not** the OAuth endpoint of your Cloud Integration tenant, and it is **not** the AI API URL (`https://api.ai.…`), which belongs in the adapter's Address field in Step 7. A wrong token URL fails with `403 Forbidden` when the adapter retrieves the access token.
+> **Caution:** Never ask for, paste, or share the client secret in chat, slides, screenshots, or a shared file. The Developer Garage team keeps it.
 
-> **Caution:** Never paste the client secret into chat, slides, screenshots, or a shared file.
+---
 
-### Build the Main Flow That Fails on Purpose
+### Step 3 — Build the Main Flow to Generate a Test Error
 
-The main flow creates a sales order with a deliberate error and validates it. A realistic, specific error gives the AI something concrete to diagnose.
+The main flow creates a sales order that contains a test error and validates it. A realistic, specific error gives the AI something concrete to diagnose.
 
 #### Start Timer
 
-Replace the **Start** event with a **Timer Start** event. On its **Scheduler** tab, choose **Run Once**, so the flow runs each time you deploy.
+Replace the **Start** event with a **Timer Start** event. On its **Scheduler** tab, keep **Basic** selected and set **Enter As** to `Simple Schedule`, **Repeat** to `None`, and **Schedule** to `On Deployment`, so the flow runs once each time you deploy.
 
 #### Set Order Payload
 
@@ -255,21 +257,9 @@ Connect **Validate Order** to the **End** event.
 
 ![Validate Order script in the editor](./assets/ai-adapter-step3-validate-order.png)
 
-### Deploy and See the Failure
+---
 
-Click **Save**, then **Deploy**. The timer fires once.
-
-Go to **Monitor → Integrations and APIs → Monitor Message Processing** and open the newest message for your integration flow.
-
-The status is **Failed** at **Validate Order**, with an error similar to:
-
-```text
-IllegalStateException: SalesOrder schema validation failed: Line 13: cvc-datatype-valid.1.2.1: 'five' is not a valid value for 'integer'. | Line 13: cvc-type.3.1.3: The value 'five' of element 'Quantity' is not valid.
-```
-
-That's expected. The rest of the tutorial turns this error into an AI-written resolution.
-
-### Capture the Error in an Exception Subprocess
+### Step 4 — Capture the Error in an Exception Subprocess
 
 From the palette, choose **Process → Exception Subprocess** and drop it inside the **Integration Process**. Keep the **End Message** event that the subprocess comes with.
 
@@ -377,13 +367,11 @@ The script:
 
 > **Caution:** Masking with regular expressions is a safety net. It can't find every personal detail, such as names written as free text. For real customer payloads, consider sending no payload extract at all.
 
-### Create the Local Process That Calls the AI
+---
 
-The AI call lives in its own local process. If the AI is unreachable, that failure is caught there and can't hide the original error.
+### Step 5 — Build the Prompt and Call the AI
 
-From the palette, choose **Process → Local Integration Process**. Drop it **outside** the main Integration Process and name it `Get AI Diagnosis`.
-
-Add a **Content Modifier** named `Build Prompt`, then a **Request Reply** (**Call → External Call**). Connect **Start → Build Prompt → Request Reply → End**.
+In **Exception Subprocess 1**, add a **Content Modifier** after **Capture Error** and name it `Build Prompt`. Add a **Request Reply** (**Call → External Call**) after it and name it `Call AI`. Connect **Capture Error → Build Prompt → Call AI**.
 
 In **Build Prompt**, open the **Message Body** tab, set **Type** to `Expression`, and paste:
 
@@ -405,39 +393,28 @@ ${property.aiErrorContext}
 
 > **Caution:** **Type** must be **Expression**. With **Constant**, the AI receives the literal text `${property.aiErrorContext}` instead of your error and answers "insufficient information".
 
-![Build Prompt, Message Body tab with Type Expression](./assets/ai-adapter-step6-build-prompt.png)
+![Build Prompt, Message Body tab with Type Expression](./assets/ai-adapter-step5-build-prompt.png)
 
-#### Exception Subprocess 2
+---
 
-Drop an **Exception Subprocess** inside the `Get AI Diagnosis` local process. Add a **Content Modifier** named `SetAIStatus` between its **Error Start** and **End Message** events. On the **Exchange Property** tab, add:
+### Step 6 — Configure the AI Adapter
 
-| Action | Name | Source Type | Value |
-| :--- | :--- | :--- | :--- |
-| Create | `aiStatus` | `Constant` | `UNAVAILABLE` |
-| Create | `aiError` | `Expression` | `${exception.message}` |
+From the palette, add a **Receiver** to the right of the canvas and name it `AI_Core`. Drag a connection from **Call AI** to `AI_Core`, choose adapter type **AI**, and select the **AICore-GenAIHub** variant.
 
-Keep the **End Message** event here. The AI failure is handled, and processing returns to Exception Subprocess 1.
-
-![Local process Get AI Diagnosis](./assets/ai-adapter-step6-local-process.png)
-
-### Configure the AI Adapter
-
-From the palette, add a **Receiver** to the right of the canvas and name it `AI_Core`. Drag a connection from **Request Reply** to `AI_Core`, choose adapter type **AI**, and select the **AICore-GenAIHub** variant.
-
-Fill in the adapter settings, using the values from `From the Instructor.txt`:
+Fill in the adapter settings:
 
 | Tab | Field | Value |
 | :--- | :--- | :--- |
-| Connection | Address | `address` from `From the Instructor.txt`, usually `https://api.ai.<region>.ml.hana.ondemand.com` |
-| Connection | OAuth2 Client Credentials | `GenAI_Creds` |
+| Connection | Address | `https://api.ai.prod-eu20.westeurope.azure.ml.hana.ondemand.com` |
+| Connection | OAuth2 Client Credentials | `AICore-resolution` |
 | Connection | Reuse Connection | Unchecked |
 | Connection | Connection Timeout (in ms) | `60000` |
 | Connection | Response Timeout (in ms) | `60000` |
 | Processing | Operation | `Orchestration - Completion` |
-| Processing | Orchestration Deployment ID | `orchestration deployment id` from `From the Instructor.txt` |
-| Processing | AI Resource Group | `ai resource group` from `From the Instructor.txt` (usually `default`) |
+| Processing | Orchestration Deployment ID | `d6bc04de07fb1d32` |
+| Processing | AI Resource Group | `default` |
 | Processing | Request Payload Source | `UI Configurable` |
-| Processing | Model | `model` from `From the Instructor.txt`, for example `gpt-4o-mini` |
+| Processing | Model | `gpt-4o-mini` |
 | Processing | Role | `user` |
 | Processing | Input | `${body}` |
 
@@ -445,28 +422,30 @@ Fill in the adapter settings, using the values from `From the Instructor.txt`:
 
 > **Note:** Field labels can differ slightly between adapter versions. If yours differ, match them by purpose.
 
-![AI Adapter, Connection tab](./assets/ai-adapter-step7-connection.png)
+![AI Adapter, Connection tab](./assets/ai-adapter-step6-connection.png)
 
-![AI Adapter, Processing tab](./assets/ai-adapter-step7-processing.png)
+![AI Adapter, Processing tab](./assets/ai-adapter-step6-processing.png)
 
-### Attach the AI Resolution to the Message
+---
 
-In **Exception Subprocess 1**, add a **Process Call** (**Call → Local Call**) after **Capture Error**. Name it `Get AI Diagnosis` and select the local process **Get AI Diagnosis**.
+### Step 7 — Attach the AI Resolution to the Message
 
-Add a **Groovy Script** after it, name it `Attach AI Diagnosis`, and paste the script below. Name the script file `AttachDiagnosis.groovy` and click **OK**.
+In **Exception Subprocess 1**, add a **Groovy Script** after **Call AI**, name it `Attach AI Diagnosis`, and paste the script below. Name the script file `AttachDiagnosis.groovy` and click **OK**.
 
 ```groovy
 /*
  * AttachDiagnosis.groovy
- * Exception subprocess 1 - runs after the "Get AI Diagnosis" process call.
+ * Exception subprocess 1 - runs after the AI Adapter's Call AI step.
  * Reads the AI response, parses the JSON diagnosis, and writes:
+ *   - MPL attachment "AI Resolution" (the problem and numbered fix steps)
  *   - MPL attachment "AI Diagnosis" (human-readable report)
  *   - custom header properties AI_Status, AI_Category, AI_Confidence, AI_NeedsHuman
+ *   - the message body: the resolution text followed by the original payload (personal data masked)
  *
  * Handles three cases:
- *   1. aiStatus = UNAVAILABLE / CONTEXT_FAILED  -> attaches a "diagnosis unavailable" note
- *   2. Response is (or contains) valid diagnosis JSON -> formatted report
- *   3. Response is not parseable                -> attaches raw response marked "unstructured"
+ *   1. aiStatus = CONTEXT_FAILED (Capture Error failed) -> attaches a "diagnosis unavailable" note
+ *   2. Response is (or contains) valid diagnosis JSON    -> formatted report
+ *   3. Response is not parseable                         -> attaches raw response marked "unstructured"
  *
  * The response parser accepts either the model's text directly, or a full
  * orchestration response (final_result / orchestration_result / choices[0].message.content).
@@ -494,65 +473,86 @@ def Message processData(Message message) {
         r << "Error class : " << origClass << "\n"
         r << "Error       : " << origMsg << "\n\n"
 
-        // Case 1 - AI not called or AI call failed
+        String resolutionText = null
+
         if (status != "OK") {
+            // Case 1 - Capture Error failed, so the AI had no error to diagnose
             r << "AI diagnosis unavailable (" << status << ").\n"
-            r << "Reason: " << (message.getProperty("aiError") ?: message.getProperty("contextError") ?: "-") << "\n"
+            r << "Reason: " << (message.getProperty("contextError") ?: "-") << "\n"
             r << "The original error above is unaffected - investigate manually.\n"
             log?.addAttachmentAsString("AI Diagnosis", r.toString(), "text/plain")
             log?.addCustomHeaderProperty("AI_Status", status)
-            return message
-        }
-
-        String body    = message.getBody(String) ?: ""
-        String content = extractContent(body)
-        def diag       = parseJson(content)
-
-        if (diag instanceof Map && diag.root_cause) {
-            // Case 2 - structured diagnosis
-            String category   = (diag.category ?: "OTHER").toString()
-            String confidence = (diag.confidence ?: "LOW").toString()
-            String needsHuman = (diag.needs_human == null ? "true" : diag.needs_human.toString())
-
-            r << "Root cause  : " << diag.root_cause << "\n"
-            r << "Category    : " << category << "\n"
-            r << "Confidence  : " << confidence << "\n"
-            r << "Needs human : " << needsHuman << "\n\n"
-            r << "Suggested fix steps:\n"
-            def steps = (diag.fix_steps instanceof List) ? diag.fix_steps : [diag.fix_steps ?: "-"]
-            steps.eachWithIndex { s, i -> r << "  " << (i + 1) << ". " << s << "\n" }
-
-            // Separate, resolution-only attachment for clean viewing
-            StringBuilder res = new StringBuilder()
-            res << "RESOLUTION\n"
-            res << "==========\n\n"
-            res << "Problem:\n  " << diag.root_cause << "\n\n"
-            res << "What to do:\n"
-            steps.eachWithIndex { s, i -> res << "  " << (i + 1) << ". " << s << "\n" }
-            res << "\nCategory: " << category << "   |   Confidence: " << confidence
-            res << "   |   Needs human: " << needsHuman << "\n"
-            res << "\n---\nAI-generated suggestion - verify before acting.\n"
-            log?.addAttachmentAsString("AI Resolution", res.toString(), "text/plain")
-
-            log?.addCustomHeaderProperty("AI_Status", "OK")
-            log?.addCustomHeaderProperty("AI_Category", category)
-            log?.addCustomHeaderProperty("AI_Confidence", confidence)
-            log?.addCustomHeaderProperty("AI_NeedsHuman", needsHuman)
+            resolutionText = r.toString()
         } else {
-            // Case 3 - model did not return the expected JSON
-            r << "AI response (unstructured - did not match expected JSON):\n"
-            r << (content ?: body) << "\n"
-            log?.addCustomHeaderProperty("AI_Status", "UNSTRUCTURED")
+            String body    = message.getBody(String) ?: ""
+            String content = extractContent(body)
+            def diag       = parseJson(content)
+
+            if (diag instanceof Map && diag.root_cause) {
+                // Case 2 - structured diagnosis
+                String category   = (diag.category ?: "OTHER").toString()
+                String confidence = (diag.confidence ?: "LOW").toString()
+                String needsHuman = (diag.needs_human == null ? "true" : diag.needs_human.toString())
+
+                r << "Root cause  : " << diag.root_cause << "\n"
+                r << "Category    : " << category << "\n"
+                r << "Confidence  : " << confidence << "\n"
+                r << "Needs human : " << needsHuman << "\n\n"
+                r << "Suggested fix steps:\n"
+                def steps = (diag.fix_steps instanceof List) ? diag.fix_steps : [diag.fix_steps ?: "-"]
+                steps.eachWithIndex { s, i -> r << "  " << (i + 1) << ". " << s << "\n" }
+
+                // Separate, resolution-only attachment for clean viewing
+                StringBuilder res = new StringBuilder()
+                res << "RESOLUTION\n"
+                res << "==========\n\n"
+                res << "Problem:\n  " << diag.root_cause << "\n\n"
+                res << "What to do:\n"
+                steps.eachWithIndex { s, i -> res << "  " << (i + 1) << ". " << s << "\n" }
+                res << "\nCategory: " << category << "   |   Confidence: " << confidence
+                res << "   |   Needs human: " << needsHuman << "\n"
+                res << "\n---\nAI-generated suggestion - verify before acting.\n"
+                log?.addAttachmentAsString("AI Resolution", res.toString(), "text/plain")
+                resolutionText = res.toString()
+
+                log?.addCustomHeaderProperty("AI_Status", "OK")
+                log?.addCustomHeaderProperty("AI_Category", category)
+                log?.addCustomHeaderProperty("AI_Confidence", confidence)
+                log?.addCustomHeaderProperty("AI_NeedsHuman", needsHuman)
+            } else {
+                // Case 3 - model did not return the expected JSON
+                r << "AI response (unstructured - did not match expected JSON):\n"
+                r << (content ?: body) << "\n"
+                log?.addCustomHeaderProperty("AI_Status", "UNSTRUCTURED")
+            }
+
+            r << "\n---\nAI-generated suggestion - verify before acting.\n"
+            log?.addAttachmentAsString("AI Diagnosis", r.toString(), "text/plain")
+            if (resolutionText == null) resolutionText = r.toString()
         }
 
-        r << "\n---\nAI-generated suggestion - verify before acting.\n"
-        log?.addAttachmentAsString("AI Diagnosis", r.toString(), "text/plain")
+        // Message body: the resolution, then the original payload (masked), so both show in the Monitor
+        StringBuilder out = new StringBuilder(resolutionText)
+        out << "\nORIGINAL PAYLOAD (personal data masked)\n"
+        out << "=======================================\n"
+        out << maskedPayload(message) << "\n"
+        message.setBody(out.toString())
 
     } catch (Exception e) {
         log?.addAttachmentAsString("AI Diagnosis", "Could not build AI diagnosis report: " + e.getMessage(), "text/plain")
         log?.addCustomHeaderProperty("AI_Status", "REPORT_FAILED")
     }
     return message
+}
+
+// The masked payload that Capture Error saved inside the aiErrorContext property
+String maskedPayload(Message message) {
+    try {
+        def ctx = new JsonSlurper().parseText(message.getProperty("aiErrorContext") as String)
+        return (ctx.payloadExtract ?: "-").toString()
+    } catch (ignored) {
+        return "-"
+    }
 }
 
 // Pull the model's text out of the response, whatever shape the adapter returns
@@ -588,9 +588,9 @@ def parseJson(String s) {
 }
 ```
 
-Connect the steps: **Error Start → Capture Error → Get AI Diagnosis → Attach AI Diagnosis → End Message**.
+Connect the steps: **Error Start → Capture Error → Build Prompt → Call AI → Attach AI Diagnosis → End Message**.
 
-![Exception Subprocess 1 complete](./assets/ai-adapter-step8-exception-subprocess.png)
+![Exception Subprocess with the AI call](./assets/ai-adapter-step7-exception-subprocess.png)
 
 The script reads the model's answer from the orchestration response and writes:
 
@@ -599,36 +599,36 @@ The script reads the model's answer from the orchestration response and writes:
 | Attachment **AI Resolution** | The problem and numbered fix steps only, for clean viewing |
 | Attachment **AI Diagnosis** | The full report: iFlow, failed step, original error, root cause, category, confidence, and fix steps |
 | Custom header properties | `ErrorHandled`, `AI_Status`, `AI_Category`, `AI_Confidence`, and `AI_NeedsHuman`, searchable in the Monitor |
+| Message body | The same text as **AI Resolution**, followed by the original payload with personal data masked. You see it in the Monitor with the log level **Trace** (Step 8). |
 
 #### Optional: Debug AI Output
 
-While building, you can add a script between **Get AI Diagnosis** and **Attach AI Diagnosis** that attaches the raw adapter response. It shows exactly what the AI received and returned. Remove it when you're done.
+While building, you can add a script between **Call AI** and **Attach AI Diagnosis** that attaches the raw adapter response. It shows exactly what the AI returned. Remove it when you're done.
 
 ```groovy
 import com.sap.gateway.ip.core.customdev.util.Message
 
 def Message processData(Message message) {
     def log = messageLogFactory.getMessageLog(message)
-    String status = message.getProperty("aiStatus") ?: "OK"
-    String report = "aiStatus: " + status + "\n" +
-                    "aiError: " + (message.getProperty("aiError") ?: "-") + "\n\n" +
-                    "AI response body:\n" + (message.getBody(String) ?: "")
+    String report = "AI response body:\n" + (message.getBody(String) ?: "")
     log?.addAttachmentAsString("AI output (debug)", report, "text/plain")
     return message
 }
 ```
 
-Here is the finished flow:
+Your finished integration flow looks like this:
 
-![The complete integration flow](./assets/ai-adapter-step8-finished-iflow.png)
+![Finished integration flow](./assets/ai-adapter-step7-finished-iflow.png)
 
-### Deploy and Read the AI Resolution
+---
+
+### Step 8 — Deploy and Read the AI Resolution
 
 Click **Save**, then **Deploy**. Go to **Monitor → Integrations and APIs → Manage Integration Content** and check that your integration flow shows **Started**.
 
 Open **Monitor Message Processing** and open the newest message. Its status is **Completed**: the error was caught and handled. Click **Attachments** and open **AI Resolution**.
 
-![AI Resolution attachment, status Completed](./assets/ai-adapter-step9-ai-resolution.png)
+![AI Resolution attachment, status Completed](./assets/ai-adapter-step8-ai-resolution.png)
 
 The AI Resolution looks similar to this. The wording varies between runs.
 
@@ -656,8 +656,17 @@ AI-generated suggestion - verify before acting.
 | Original error kept | **Attachments → AI Diagnosis** | The `'five'` validation error for `Quantity` |
 | Readable resolution | **Attachments → AI Resolution** | The problem and 2 to 4 fix steps that name `Quantity` |
 | Searchable result | **Custom Header Properties** | `AI_Category = DATA`, `AI_Status = OK`, and `ErrorHandled = true` |
+| Resolution in the body | **Trace → End → Message Content → Payload** | The same text as **AI Resolution**, then the masked original order |
 
-![Custom Header Properties with AI_ and ErrorHandled values](./assets/ai-adapter-step9-custom-headers.png)
+![Custom Header Properties with AI_ and ErrorHandled values](./assets/ai-adapter-step8-custom-headers.png)
+
+#### View the Resolution in the Message Body
+
+The body is only stored when the log level is **Trace**. In **Manage Integration Content**, select your integration flow and set its **Log Level** to **Trace**. The timer runs once per deployment, so click **Deploy** again.
+
+In **Monitor Message Processing**, open the newest message, choose **Logs**, and click **Trace**. In the step list, select **End** (the End Message event), then open **Message Content** and the **Payload** tab. The view shows the message before the step you select, so you see the body that **Attach AI Diagnosis** set: the resolution, followed by the original payload with personal data masked.
+
+![Message Content, Payload tab of the End step](./assets/ai-adapter-step8-message-body.png)
 
 > **Run it again:** The timer runs once per deployment. To run again, deploy again. The AI's wording varies between runs; the category and the field it names should stay the same.
 
@@ -668,20 +677,22 @@ AI-generated suggestion - verify before acting.
 | Issue | Fix |
 | :--- | :--- |
 | Error says "Refer to MPL attachment (XML Validator Error Document)" | You're using the standard XML Validator. Use the Validate Order script from Step 3. |
-| `403 Forbidden` while retrieving the access token | The Token Service URL is wrong. Use the service key's `url` plus `/oauth/token`, not your Cloud Integration tenant URL (Step 2). |
-| `400 Bad Request` with `Missing Tenant Id` | Likely cause (unverified): the token and the address come from different SAP AI Core instances. Check the client ID, secret, token URL, Address, and deployment ID all come from the same service key and instance, redeploy the Security Material, then redeploy the flow. |
-| Deployment fails: `URISyntaxException: Illegal character in opaque part` | The prompt is in the adapter's Input field. Set Input to `${body}` only and keep the prompt in Build Prompt (Step 6). |
+| `403 Forbidden` while retrieving the access token | The credential `AICore-resolution` is set up incorrectly. Tell a Developer Advocate; you can't fix it from your side. |
+| `400 Bad Request` with `Missing Tenant Id` | Likely cause (unverified): the token and the address come from different SAP AI Core instances. Check that the Address and Orchestration Deployment ID match the values in Step 6. If they do, tell a Developer Advocate that `AICore-resolution` and the Address may come from different instances. |
+| Deployment fails: `URISyntaxException: Illegal character in opaque part` | The prompt is in the adapter's Input field. Set Input to `${body}` only and keep the prompt in Build Prompt (Step 5). |
 | `404` from the AI Adapter | The deployment ID and resource group don't match. Both must belong to the same orchestration deployment. |
-| `401` from the AI Adapter | Check the client ID and secret in the Security Material come from the same service key. |
-| Model not found | That model isn't enabled for orchestration. Ask your instructor which models are available. |
+| `401` from the AI Adapter | The credential `AICore-resolution` is rejected. Tell a Developer Advocate. |
+| Model not found | That model isn't enabled for orchestration. Ask a Developer Advocate which models are available. |
 | The AI answers "insufficient information" with confidence LOW | The AI never received the error. Set the Build Prompt body Type to **Expression**. The Debug AI Output script shows exactly what was sent. |
 | The error message appears three times | Cloud Integration wraps script errors. Use the provided Capture Error script, which reads only the innermost exception. |
-| `OrderDate` shows `[PHONE]` in the AI input | An older masking pattern matched ISO dates. Use the Capture Error script from Step 5. |
-| AI Resolution is missing; only AI Diagnosis appears | An older Attach AI Diagnosis script is deployed. Paste the script from Step 8 and deploy again. |
-| AI Diagnosis says "AI diagnosis unavailable (UNAVAILABLE)" | The AI call failed and Exception Subprocess 2 caught it. Check `aiError` in the Debug AI Output attachment for the reason. |
-| `AI_Status = UNSTRUCTURED` | The model didn't return the expected JSON. Check the prompt in Build Prompt is complete, then compare with the raw response in Debug AI Output. |
+| `OrderDate` shows `[PHONE]` in the AI input | An older masking pattern matched ISO dates. Use the Capture Error script from Step 4. |
+| AI Resolution is missing; only AI Diagnosis appears, and `AI_Status` is `OK` | An older Attach AI Diagnosis script is deployed. Paste the script from Step 7 and deploy again. |
+| AI Resolution is missing; only AI Diagnosis appears, and `AI_Status` is `UNSTRUCTURED` | The model didn't return the expected JSON, so the script writes no AI Resolution. The raw answer is in the AI Diagnosis attachment and in the message body. Check the prompt in Build Prompt is complete, then compare with the raw response in Debug AI Output. |
+| `AI_Status = CONTEXT_FAILED` | Capture Error failed, so the AI had no error to diagnose. The reason is in the AI Diagnosis attachment. Paste the Capture Error script from Step 4 again and deploy. |
+| `AI_Status = REPORT_FAILED` | Attach AI Diagnosis itself failed. The AI Diagnosis attachment contains the script's error message. Paste the script from Step 7 again and deploy. |
+| The message shows Failed and the error comes from the AI Adapter (for example 401, 403, 404, or a timeout) | The AI call failed inside the error handler. Expected result (unverified, not tested for this tutorial): no resolution is written and no `AI_` header properties are set. Fix the cause using the rows above, then deploy again. |
 | The message shows Failed instead of Completed | Exception Subprocess 1 ends with an Error End. Replace it with an **End Message** event. |
-| Message Content shows raw JSON, not the resolution | Message Content is the message body, which still holds the adapter response. The resolution is under **Attachments → AI Resolution**. |
+| Message Content shows raw JSON, not the resolution | You selected a step before **Attach AI Diagnosis**, so the body still holds the adapter response. Select **End** and open **Payload**, or read **Attachments → AI Resolution**. |
 | My message never appears | The timer runs once per deployment. Deploy again, and check the flow is **Started** in Manage Integration Content. |
 
 #### Try It Yourself
@@ -698,7 +709,7 @@ Change the payload in **Set Order Payload** and deploy again to compare the diag
 Then try these:
 
 - In the Monitor, filter by the custom header property `AI_Category`.
-- Change the client secret in your Security Material to a wrong value and deploy. AI Diagnosis says the diagnosis is unavailable, while the original error is kept. Then restore the secret.
+- Set the log level to **Trace** and compare the body before and after **Attach AI Diagnosis**: the adapter's raw JSON becomes the readable resolution.
 - Remove the Build Prompt rule that asks for 2 to 4 fix steps and compare the resolution.
 
 You built a flow that catches an integration error, masks it, asks SAP AI Core for a diagnosis through the AI Adapter, and attaches a readable resolution to the message.
