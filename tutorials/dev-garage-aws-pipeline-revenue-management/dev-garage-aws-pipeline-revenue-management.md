@@ -531,8 +531,7 @@ Click **Save**, then **Deploy**. Go to **Monitor → Integrations and APIs → M
 
 In the same view, select your integration flow and set its **Log Level** to **Trace**. Trace switches itself off after a short while, so do this right before testing.
 
-> [!IMPORTANT]
-> Your flow runs once each time you deploy it. You will need to redeploy it after updating the trace level.
+> 🚨 Your iFlow runs once each time you deploy it. ***You will need to redeploy it after updating the trace level.***
 
 Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
 
