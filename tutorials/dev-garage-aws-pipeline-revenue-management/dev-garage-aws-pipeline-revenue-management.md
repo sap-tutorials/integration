@@ -180,7 +180,7 @@ The file is never moved or deleted, so it stays in `daily/` and your flow can re
 
 #### CSV to XML Converter
 
-Add a **CSV to XML Converter** right after **Read Sales File**. On its **Processing** tab, click **Select** next to **XML Schema** and upload `xml_schema.xsd`. If you don't have the file, save the XML below as `xml_schema.xsd` and upload that.
+Add a **CSV to XML Converter** right after **Read Sales File**. On its **Processing** tab, click **Select** next to **XML Schema** and upload `xml_schema.xsd`. If you don't have the file, save the XML below as [`xml_schema.xsd`](https://raw.githubusercontent.com/sap-tutorials/integration/main/tutorials/dev-garage-aws-pipeline-revenue-management/files/xml_schema.xsd) and upload that.
 
 | Field | Value |
 | :--- | :--- |
@@ -531,7 +531,10 @@ Click **Save**, then **Deploy**. Go to **Monitor → Integrations and APIs → M
 
 In the same view, select your integration flow and set its **Log Level** to **Trace**. Trace switches itself off after a short while, so do this right before testing.
 
-Your flow runs once each time you deploy it. Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
+> [!IMPORTANT]
+> Your flow runs once each time you deploy it. You will need to redeploy it after updating the trace level.
+
+Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
 
 | Check | Where | What you should see |
 | :--- | :--- | :--- |
@@ -578,14 +581,6 @@ Published to:   curated-corp/profit-margins/sales_<today's date>.json
 | Script check: JSONSlurper without streaming | A best-practice warning, not an error. The script already reads the body as a stream. |
 | No Message Content in the Monitor | Trace wasn't active when the file was processed. Set the log level to Trace and deploy again. |
 | My message never appears | Check your flow is **Started** in Manage Integration Content, and that the Directory in Read Sales File is `daily`. |
-
-#### Try It Yourself
-
-- Before you open the summary, predict which region earned the most margin. Then check.
-- Ask a Developer Advocate to raise the unit cost of the Standing Desk in `product_master.csv`. The next run's margin drops, even though the sales data didn't change.
-- Ask a Developer Advocate to replace the file in `daily/` with one that contains a sale of product `P-9999`. The summary reports one record without cost data, and that record shows `unknown` for its margin.
-
-You built a flow that reads from Amazon S3, enriches the data from a reference file in S3, writes the result back to S3 in another region, and summarizes the run.
 
 #### References
 
