@@ -73,6 +73,10 @@ Exception Subprocess 1 (runs when anything in the main flow fails):
 | **Call AI** | Calls SAP AI Core through the AI Adapter and receives the diagnosis. |
 | **Attach AI Diagnosis** | Turns the AI answer into readable attachments, a readable message body, and searchable fields in the Monitor. |
 
+By the end of the exercise, you will have an integration flow like the one below:
+
+![Finished integration flow](./assets/ai-adapter-step7-finished-iflow.png)
+
 ---
 
 ### Step 1 — Create a Package and an Integration Flow
@@ -95,7 +99,7 @@ On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **C
 
 | Field | Value |
 | :--- | :--- |
-| Name | `Error Resolution with AI Adapter` |
+| Name | `Error Resolution with AI Adapter User{{var:userNumber}}` |
 | ID | *(auto-populated)* |
 
 Click **OK**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
@@ -103,8 +107,6 @@ Click **OK**, open the integration flow, and click **Edit**. Delete the default 
 > **Tip:** You add steps from the palette at the top of the canvas. Content Modifier and Groovy Script are under **Message Transformers**; Request Reply is under **Call**; Exception Subprocess is under **Process**. Menu names can differ slightly between tenant versions.
 
 Click **Save** regularly as you build.
-
----
 
 ### Step 2 — Check the Credential Provisioned for You
 
