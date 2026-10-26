@@ -89,6 +89,10 @@ Start Timer                 (runs the flow once each time you deploy)
 | **S3 Write** | Writes the enriched JSON to `curated-corp/profit-margins/` |
 | **Show Run Summary** | Puts the run summary in the message, so it's the last thing you see in the Monitor |
 
+By the end of the exercise, you will have an integration flow like the one below:
+
+![Finished integration flow](./assets/aws-s3-step8-finished-iflow.png)
+
 ---
 
 ### Step 1 — Create a Package and an Integration Flow
@@ -111,7 +115,7 @@ On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **C
 
 | Field | Value |
 | :--- | :--- |
-| Name | `AWS Pipeline for Revenue Management` |
+| Name | `AWS Pipeline for Revenue Management User{{var:userNumber}}` |
 | ID | *(auto-populated)* |
 
 Click **OK**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
@@ -119,8 +123,6 @@ Click **OK**, open the integration flow, and click **Edit**. Delete the default 
 > **Tip:** You add steps from the palette at the top of the canvas. Converters, Content Modifier, and Groovy Script are under **Message Transformers**; Request Reply is under **Call → External Call**; extra receivers are under **Participants**. Menu names can differ slightly between tenant versions.
 
 Click **Save** regularly as you build.
-
----
 
 ### Step 2 — Check the Credentials Provisioned for You
 
