@@ -226,7 +226,7 @@ Now, lets get familiar with each step in the integration flow.
 
 The iFlow will be kicked off by the AEM adapter step, but it will need to be configured with the correct connection details for the AEM instance that has been provided for the tutorial.
 
-👉 Choose the AEM adapter step in the iFlow and get familiar with its properties, e.g. Host, Message VPN, Authentication Type. In the **Processing** tab, the Consumer Mode, Topic subscription.
+👉 Choose the AEM adapter step in the iFlow (the connecting arrow **----->** from the Sender participant) and get familiar with its properties, e.g. Host, Message VPN, Authentication Type. In the **Processing** tab, the Consumer Mode, Topic subscription.
 
 > In the Processing tab, we'll see the updated Topic Subscriptions field as we replaced `User{{var:userNumber}}` with the actual user number.
 
@@ -285,7 +285,7 @@ Below we can see how the Groovy script is displayed in the iFlow editor. Notice 
 
 #### AICore - HTTP receiver adapter
 
-The iFlow will call AI Core API directly and for that we will use the HTTP adapter. The following values have been configured
+The iFlow will call AI Core API directly and for that we will use the HTTP adapter. Choose the HTTP receiver adapter (the connecting arrow **----->** to the AI Core receiver participant) step in the iFlow and get familiar with its properties. The following values have been configured
 
 - **Connection** tab
   

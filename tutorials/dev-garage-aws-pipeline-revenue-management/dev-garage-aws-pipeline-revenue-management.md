@@ -95,7 +95,7 @@ By the end of the exercise, you will have an integration flow like the one below
 
 ---
 
-### Step 1 — Create a Package and an Integration Flow
+### Create a Package and an Integration Flow
 
 #### Create an Integration Package
 
@@ -111,36 +111,36 @@ Now that we understand the integration scenario, it is time to create the integr
 
 #### Create the Integration Flow
 
-On the package's **Artifacts** tab, click **Add → Integration Flow**. Keep **Create** selected and fill in:
+On the package's **Artifacts** tab, click **Add → Integration Flow → Add Integrations manually**. Select  Keep **Create** selected and fill in:
 
 | Field | Value |
 | :--- | :--- |
 | Name | `AWS Pipeline for Revenue Management User{{var:userNumber}}` |
 | ID | *(auto-populated)* |
 
-Click **OK**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
+Click **Add**, open the integration flow, and click **Edit**. Delete the default **Sender** and **Receiver**. This flow is started by a timer and has no sender.
 
 > **Tip:** You add steps from the palette at the top of the canvas. Converters, Content Modifier, and Groovy Script are under **Message Transformers**; Request Reply is under **Call → External Call**; extra receivers are under **Participants**. Menu names can differ slightly between tenant versions.
 
 Click **Save** regularly as you build.
 
-### Step 2 — Check the Credentials Provisioned for You
+### Check the Credentials Provisioned for You
 
 The AWS adapters authenticate to Amazon S3 with two secure parameters. They have been created in your tenant, so you don't create them and you never see the AWS access key or secret.
 
 Check that they exist. Go to **Monitor → Integrations and APIs → Security Material**. In the list, find two entries named `S3Key` and `S3Secret` with type **Secure Parameter**.
 
-You enter these names in the **Access Key Alias** and **Secret Key Alias** fields of the AWS adapters in Steps 3, 6, and 8. If either is missing, ask a Developer Advocate. Don't create them yourself.
+You enter these names in the **Access Key Alias** and **Secret Key Alias** fields of the AWS adapters. If either is missing, ask a Developer Advocate. Don't create them yourself.
 
 > **Caution:** The names are case-sensitive: `S3Key` and `S3Secret`. The AWS adapters look the credentials up by these names; a mismatch makes the deployment fail. Never ask for, paste, or share the AWS keys in chat, slides, screenshots, or a shared file.
 
 ---
 
-### Step 3 — Start the Flow and Read the Sales File
+### Start the Flow and Read the Sales File
 
 #### Start Timer
 
-Replace the **Start** event with a **Timer Start** event. On its **Scheduler** tab, keep **Basic** selected and set **Enter As** to `Simple Schedule`, **Repeat** to `None`, and **Schedule** to `On Deployment`, so the flow runs once each time you deploy.
+Enter Edit mode by selecting the **Edit** button on the top right corner. Replace the **Start** event with a **Timer Start** event. On its **Scheduler** tab, keep **Basic** selected and set **Enter As** to `Simple Schedule`, **Repeat** to `None`, and **Schedule** to `On Deployment`, so the flow runs once each time you deploy.
 
 ![Timer Start — Scheduler tab](./assets/aws-s3-step3-timer-start.png)
 
@@ -174,13 +174,11 @@ Fill in the adapter settings:
 
 The file is never moved or deleted, so it stays in `daily/` and your flow can read it again each time you deploy.
 
----
-
-### Step 4 — Convert the CSV to JSON
+### Convert the CSV to JSON
 
 #### CSV to XML Converter
 
-Add a **CSV to XML Converter** right after **Read Sales File**. On its **Processing** tab, click **Select** next to **XML Schema** and upload `xml_schema.xsd`. If you don't have the file, save the XML below as [`xml_schema.xsd`](https://raw.githubusercontent.com/sap-tutorials/integration/main/tutorials/dev-garage-aws-pipeline-revenue-management/files/xml_schema.xsd) and upload that.
+Add a **CSV to XML Converter** right after **Read Sales File**. On its **Processing** tab, click **Select** next to **XML Schema** and upload [`xml_schema.xsd`](https://raw.githubusercontent.com/sap-tutorials/integration/main/tutorials/dev-garage-aws-pipeline-revenue-management/files/xml_schema.xsd). If you don't have the file, save the XML below as `xml_schema.xsd` and upload that.
 
 | Field | Value |
 | :--- | :--- |
@@ -240,7 +238,7 @@ This converter writes every value as a JSON string. The Groovy script in Step 7 
 
 ---
 
-### Step 5 — Prepare for the Lookup
+### Prepare for the Lookup
 
 Add a **Content Modifier** after the XML to JSON Converter and name it `Prepare for Lookup`. On its **Exchange Property** tab, add four rows:
 
@@ -261,7 +259,7 @@ Add a **Content Modifier** after the XML to JSON Converter and name it `Prepare 
 
 ---
 
-### Step 6 — Look Up Unit Costs from S3
+### Look Up Unit Costs from S3
 
 Unit costs live in a reference file that has been placed in S3: `regional-landing-bkt/reference/product_master.csv`. You read it mid-flow with the same AWS adapter, the same way as the sales file.
 
@@ -298,7 +296,7 @@ Read Sales File and Cost LookUp use the same adapter and the same operation. Onl
 
 ---
 
-### Step 7 — Calculate Profit Margin
+### Calculate Profit Margin
 
 Add a **Groovy Script** step after Cost LookUp and name it `Margin Calculation`. Click the step's create-script icon, replace the template in the editor with the script below, and click **OK**.
 
@@ -481,9 +479,7 @@ Message processData(Message message) {
 
 > The **Read from** and **Published to** lines in the summary use fixed paths. If your folders differ from the defaults, edit the `sourcePath` and `curatedPath` lines in the script. The flow itself doesn't depend on them.
 
----
-
-### Step 8 — Write the Curated File and Show the Summary
+### Write the Curated File and Show the Summary
 
 #### S3 Write
 
@@ -525,7 +521,7 @@ Your finished flow:
 
 ---
 
-### Step 9 — Deploy and Test
+### Deploy and Test
 
 Click **Save**, then **Deploy**. Go to **Monitor → Integrations and APIs → Manage Integration Content** and wait until your integration flow shows **Started**.
 
@@ -533,7 +529,11 @@ In the same view, select your integration flow and set its **Log Level** to **Tr
 
 > 🚨 Your iFlow runs once each time you deploy it. ***You will need to redeploy it after updating the trace level.***
 
-Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it and click **Message Content**. The view shows the message *before* the step you select.
+Open **Monitor Message Processing** and wait for your message to show **Completed**. Open it, select the **Trace** link in the ***Logs*** section.
+
+![Trace link in Monitor Message Processing](assets/trace-link-in-message-monitoring.png)
+
+The view shows the message *before* the step you select.
 
 | Check | Where | What you should see |
 | :--- | :--- | :--- |
@@ -542,6 +542,8 @@ Open **Monitor Message Processing** and wait for your message to show **Complete
 | Summarized | **End 1** → Exchange Properties | `runSummary` holds the run summary |
 
 ![Monitor Message Processing — message Completed](./assets/aws-s3-step9-monitor-completed.png)
+
+Now, select the last Run Step, e.g. ***End 1***, choose the **Message Content** tab and then the **Exchange Properties** tab. 
 
 ![Message Content — run summary at End 1](./assets/aws-s3-step9-run-summary.png)
 
@@ -569,14 +571,14 @@ Published to:   curated-corp/profit-margins/sales_<today's date>.json
 | Issue | Fix |
 | :--- | :--- |
 | `UnknownHostException: s3.Europe (Stockholm)...` | The region was entered as a label instead of chosen from the dropdown. Select `eu-north-1 Europe (Stockholm)`. |
-| Deployment fails mentioning a credential | The names in the Access Key Alias and Secret Key Alias fields of all three AWS adapters must be exactly `S3Key` and `S3Secret`. If they are, check Step 2 for both entries; if one is missing, ask a Developer Advocate. |
-| `Header TRANSACTION_ID not present in CSV headers` | The sales file's header doesn't match the XSD. It must be the lowercase header shown in Step 4. |
+| Deployment fails mentioning a credential | The names in the Access Key Alias and Secret Key Alias fields of all three AWS adapters must be exactly `S3Key` and `S3Secret`. If they are, check Step 3 for both entries; if one is missing, ask a Developer Advocate. |
+| `Header TRANSACTION_ID not present in CSV headers` | The sales file's header doesn't match the XSD. It must be the lowercase header shown in Step 5. |
 | Cost LookUp: access denied | Post-Processing must be **Keep File**, not Delete File. If it is, ask a Developer Advocate to check the reference folder permission. |
 | Cost LookUp: file not found | Directory must be `reference` and File Name `product_master.csv`, exactly, in Region `eu-north-1`. |
 | `Text must not be null or empty` (Margin Calculation) | The stashed sales data is empty. Set the Data Type of `preEnrichmentJson` to `java.lang.String` in Prepare for Lookup. |
 | `JsonException ... current character read is '<'` | The stashed property holds XML. The XML to JSON Converter is missing, or Prepare for Lookup sits before it. |
 | Every record shows `unit_cost` "unknown" | The lookup found no costs. Check in Message Content that the body after Cost LookUp starts with `product_id,unit_cost`. |
-| Curated file is named `sales_.json` | `businessDate` is missing. Add it in Prepare for Lookup (Step 5). |
+| Curated file is named `sales_.json` | `businessDate` is missing. Add it in Prepare for Lookup (Step 6). |
 | Script check: JSONSlurper without streaming | A best-practice warning, not an error. The script already reads the body as a stream. |
 | No Message Content in the Monitor | Trace wasn't active when the file was processed. Set the log level to Trace and deploy again. |
 | My message never appears | Check your flow is **Started** in Manage Integration Content, and that the Directory in Read Sales File is `daily`. |
